@@ -10,26 +10,26 @@ import (
 	"golang.org/x/tools/go/analysis"
 )
 
-func reportViolations(pass *analysis.Pass, msgExpr ast.Expr, parts messageParts) {
+func reportViolations(pass *analysis.Pass, msgExpr ast.Expr, parts messageParts, rules ruleSet) {
 	if parts.HasFull {
-		reportAll(pass, parts.FullPos, parts.Full, true)
+		reportAll(pass, parts.FullPos, parts.Full, rules)
 		return
 	}
 	if !parts.HasLeading && len(parts.Literals) == 0 {
 		return
 	}
-	if parts.HasLeading && violatesLowercase(parts.Leading) {
+	if rules.lowercase && parts.HasLeading && violatesLowercase(parts.Leading) {
 		pass.Reportf(parts.LeadingPos, "log message must start with a lowercase letter")
 	}
 	var english, special, sensitive bool
 	for _, lit := range parts.Literals {
-		if !english && containsNonEnglishLetter(lit.Value) {
+		if rules.english && !english && containsNonEnglishLetter(lit.Value) {
 			english = true
 		}
-		if !special && containsSpecialOrEmoji(lit.Value) {
+		if rules.special && !special && containsSpecialOrEmoji(lit.Value) {
 			special = true
 		}
-		if !sensitive && containsSensitiveKeyword(lit.Value) {
+		if rules.sensitive && !sensitive && containsSensitiveKeyword(lit.Value) {
 			sensitive = true
 		}
 	}
@@ -37,28 +37,28 @@ func reportViolations(pass *analysis.Pass, msgExpr ast.Expr, parts messageParts)
 	if len(parts.Literals) > 0 {
 		pos = parts.Literals[0].Pos
 	}
-	if english {
+	if rules.english && english {
 		pass.Reportf(pos, "log message must be in English")
 	}
-	if special {
+	if rules.special && special {
 		pass.Reportf(pos, "log message must not contain special symbols or emoji")
 	}
-	if sensitive {
+	if rules.sensitive && sensitive {
 		pass.Reportf(pos, "log message must not contain sensitive data")
 	}
 }
 
-func reportAll(pass *analysis.Pass, pos token.Pos, msg string, includeLower bool) {
-	if includeLower && violatesLowercase(msg) {
+func reportAll(pass *analysis.Pass, pos token.Pos, msg string, rules ruleSet) {
+	if rules.lowercase && violatesLowercase(msg) {
 		pass.Reportf(pos, "log message must start with a lowercase letter")
 	}
-	if containsNonEnglishLetter(msg) {
+	if rules.english && containsNonEnglishLetter(msg) {
 		pass.Reportf(pos, "log message must be in English")
 	}
-	if containsSpecialOrEmoji(msg) {
+	if rules.special && containsSpecialOrEmoji(msg) {
 		pass.Reportf(pos, "log message must not contain special symbols or emoji")
 	}
-	if containsSensitiveKeyword(msg) {
+	if rules.sensitive && containsSensitiveKeyword(msg) {
 		pass.Reportf(pos, "log message must not contain sensitive data")
 	}
 }
