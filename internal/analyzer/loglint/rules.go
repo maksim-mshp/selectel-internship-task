@@ -3,6 +3,7 @@ package loglint
 import (
 	"go/ast"
 	"go/token"
+	"regexp"
 	"strings"
 	"unicode"
 	"unicode/utf8"
@@ -29,7 +30,7 @@ func reportViolations(pass *analysis.Pass, msgExpr ast.Expr, parts messageParts,
 		if rules.special && !special && containsSpecialOrEmoji(lit.Value) {
 			special = true
 		}
-		if rules.sensitive && !sensitive && containsSensitiveKeyword(lit.Value, rules.sensitiveKeywords) {
+		if rules.sensitive && !sensitive && containsSensitivePattern(lit.Value, rules.sensitivePatterns) {
 			sensitive = true
 		}
 	}
@@ -58,7 +59,7 @@ func reportAll(pass *analysis.Pass, pos token.Pos, msg string, rules ruleSet) {
 	if rules.special && containsSpecialOrEmoji(msg) {
 		pass.Reportf(pos, "log message must not contain special symbols or emoji")
 	}
-	if rules.sensitive && containsSensitiveKeyword(msg, rules.sensitiveKeywords) {
+	if rules.sensitive && containsSensitivePattern(msg, rules.sensitivePatterns) {
 		pass.Reportf(pos, "log message must not contain sensitive data")
 	}
 }
@@ -94,10 +95,9 @@ func containsSpecialOrEmoji(s string) bool {
 	return false
 }
 
-func containsSensitiveKeyword(s string, keywords []string) bool {
-	low := strings.ToLower(s)
-	for _, kw := range keywords {
-		if strings.Contains(low, kw) {
+func containsSensitivePattern(s string, patterns []*regexp.Regexp) bool {
+	for _, p := range patterns {
+		if p.MatchString(s) {
 			return true
 		}
 	}

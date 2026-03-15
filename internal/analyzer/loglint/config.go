@@ -3,34 +3,38 @@ package loglint
 import (
 	"os"
 	"path/filepath"
+	"regexp"
 
 	"gopkg.in/yaml.v3"
 )
 
 type Config struct {
-	Lowercase         bool
-	English           bool
-	Special           bool
-	Sensitive         bool
-	SensitiveKeywords []string
+	Lowercase        bool
+	English          bool
+	Special          bool
+	Sensitive        bool
+	Patterns         []string
+	compiledPatterns []*regexp.Regexp
 }
 
 type ConfigOverrides struct {
-	Lowercase         *bool    `json:"lowercase" yaml:"lowercase"`
-	English           *bool    `json:"english" yaml:"english"`
-	Special           *bool    `json:"special" yaml:"special"`
-	Sensitive         *bool    `json:"sensitive" yaml:"sensitive"`
-	SensitiveKeywords []string `json:"sensitive_keywords" yaml:"sensitive_keywords"`
+	Lowercase *bool    `json:"lowercase" yaml:"lowercase"`
+	English   *bool    `json:"english" yaml:"english"`
+	Special   *bool    `json:"special" yaml:"special"`
+	Sensitive *bool    `json:"sensitive" yaml:"sensitive"`
+	Patterns  []string `json:"patterns" yaml:"patterns"`
 }
 
 func DefaultConfig() Config {
-	return Config{
-		Lowercase:         true,
-		English:           true,
-		Special:           true,
-		Sensitive:         true,
-		SensitiveKeywords: defaultSensitiveKeywords(),
+	cfg := Config{
+		Lowercase: true,
+		English:   true,
+		Special:   true,
+		Sensitive: true,
+		Patterns:  defaultPatterns(),
 	}
+	cfg.compiledPatterns, _ = compilePatterns(cfg.Patterns)
+	return cfg
 }
 
 func LoadConfig(path string) (Config, error) {
@@ -49,7 +53,13 @@ func LoadConfig(path string) (Config, error) {
 	if err := yaml.Unmarshal(data, &overrides); err != nil {
 		return cfg, err
 	}
-	return applyOverrides(cfg, overrides), nil
+	cfg = applyOverrides(cfg, overrides)
+	compiled, err := compilePatterns(cfg.Patterns)
+	if err != nil {
+		return cfg, err
+	}
+	cfg.compiledPatterns = compiled
+	return cfg, nil
 }
 
 func applyOverrides(cfg Config, overrides ConfigOverrides) Config {
@@ -65,8 +75,8 @@ func applyOverrides(cfg Config, overrides ConfigOverrides) Config {
 	if overrides.Sensitive != nil {
 		cfg.Sensitive = *overrides.Sensitive
 	}
-	if overrides.SensitiveKeywords != nil {
-		cfg.SensitiveKeywords = overrides.SensitiveKeywords
+	if overrides.Patterns != nil {
+		cfg.Patterns = overrides.Patterns
 	}
 	return cfg
 }
@@ -81,27 +91,35 @@ func findDefaultConfigPath() string {
 	return ""
 }
 
-func defaultSensitiveKeywords() []string {
+func defaultPatterns() []string {
 	return []string{
-		"password",
-		"passwd",
-		"pwd",
-		"secret",
-		"token",
-		"access_token",
-		"refresh_token",
-		"id_token",
-		"api_key",
-		"apikey",
-		"access_key",
-		"private_key",
-		"client_secret",
-		"authorization",
-		"bearer",
-		"session",
-		"cookie",
-		"ssn",
-		"cvv",
-		"pin",
+		"(?i)password",
+		"(?i)passwd",
+		"(?i)secret",
+		"(?i)token",
+		"(?i)api_key",
+		"(?i)apikey",
+		"(?i)access_key",
+		"(?i)private_key",
+		"(?i)client_secret",
+		"(?i)authorization",
+		"(?i)bearer",
+		"(?i)session",
+		"(?i)cookie",
 	}
+}
+
+func compilePatterns(patterns []string) ([]*regexp.Regexp, error) {
+	if patterns == nil {
+		return nil, nil
+	}
+	out := make([]*regexp.Regexp, 0, len(patterns))
+	for _, p := range patterns {
+		r, err := regexp.Compile(p)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, r)
+	}
+	return out, nil
 }

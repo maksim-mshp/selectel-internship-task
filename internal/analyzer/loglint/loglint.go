@@ -2,6 +2,7 @@ package loglint
 
 import (
 	"go/ast"
+	"regexp"
 
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/inspect"
@@ -43,7 +44,7 @@ type ruleSet struct {
 	english           bool
 	special           bool
 	sensitive         bool
-	sensitiveKeywords []string
+	sensitivePatterns []*regexp.Regexp
 }
 
 func NewAnalyzer(cfg Config) *analysis.Analyzer {
@@ -57,7 +58,7 @@ func NewRuleAnalyzer(name, doc string, mask ruleSet, cfg Config) *analysis.Analy
 		english:           mask.english && base.english,
 		special:           mask.special && base.special,
 		sensitive:         mask.sensitive && base.sensitive,
-		sensitiveKeywords: base.sensitiveKeywords,
+		sensitivePatterns: base.sensitivePatterns,
 	}
 	return newAnalyzerWithRules(name, doc, rules)
 }
@@ -68,7 +69,7 @@ func rulesFromConfig(cfg Config) ruleSet {
 		english:           cfg.English,
 		special:           cfg.Special,
 		sensitive:         cfg.Sensitive,
-		sensitiveKeywords: cfg.SensitiveKeywords,
+		sensitivePatterns: cfg.compiledPatterns,
 	}
 }
 

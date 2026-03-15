@@ -30,6 +30,21 @@ func TestSensitive(t *testing.T) {
 	requireSingleMessage(t, diags, "log message must not contain sensitive data")
 }
 
+func TestPatternsConfig(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "loglint.yml")
+	data := []byte("patterns:\n  - '(?i)paymentref'\n")
+	if err := os.WriteFile(path, data, 0644); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+	cfg, err := LoadConfig(path)
+	if err != nil {
+		t.Fatalf("load config: %v", err)
+	}
+	diags := runOnPackage(t, NewAnalyzer(cfg), "patterns")
+	requireSingleMessage(t, diags, "log message must not contain sensitive data")
+}
+
 func runOnPackage(t *testing.T, analyzer *analysis.Analyzer, pattern string) []analysis.Diagnostic {
 	t.Helper()
 	root := testdataRoot(t)
