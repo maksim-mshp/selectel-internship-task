@@ -1,7 +1,7 @@
 package main
 
 import (
-	"log-linter/internal/analyzer/loglint"
+	"github.com/maksim-mshp/selectel-internship-task/internal/analyzer/loglint"
 
 	"golang.org/x/tools/go/analysis/unitchecker"
 )
