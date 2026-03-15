@@ -23,17 +23,16 @@ type messageParts struct {
 type literalPart struct {
 	Value string
 	Pos   token.Pos
+	End   token.Pos
 }
 
 func extractMessageParts(pass *analysis.Pass, expr ast.Expr) messageParts {
-	if full, pos, ok := constString(pass, expr); ok {
-		return messageParts{
-			Full:    full,
-			FullPos: pos,
-			HasFull: true,
-		}
-	}
 	parts := messageParts{}
+	if full, pos, ok := constString(pass, expr); ok {
+		parts.Full = full
+		parts.FullPos = pos
+		parts.HasFull = true
+	}
 	lits := make([]literalPart, 0, 2)
 	collectStringLiterals(pass, expr, &parts, &lits)
 	if len(lits) > 0 {
@@ -60,7 +59,7 @@ func collectStringLiterals(pass *analysis.Pass, expr ast.Expr, parts *messagePar
 		if err != nil {
 			s = e.Value
 		}
-		*lits = append(*lits, literalPart{Value: s, Pos: e.Pos()})
+		*lits = append(*lits, literalPart{Value: s, Pos: e.Pos(), End: e.End()})
 		if !parts.HasLeading {
 			parts.HasLeading = true
 			parts.Leading = s
