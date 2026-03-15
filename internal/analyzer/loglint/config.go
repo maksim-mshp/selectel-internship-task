@@ -31,7 +31,6 @@ func DefaultConfig() Config {
 		English:   true,
 		Special:   true,
 		Sensitive: true,
-		Patterns:  defaultPatterns(),
 	}
 	cfg.compiledPatterns, _ = compilePatterns(cfg.Patterns)
 	return cfg
@@ -89,24 +88,6 @@ func findDefaultConfigPath() string {
 		}
 	}
 	return ""
-}
-
-func defaultPatterns() []string {
-	return []string{
-		"(?i)password",
-		"(?i)passwd",
-		"(?i)secret",
-		"(?i)token",
-		"(?i)api_key",
-		"(?i)apikey",
-		"(?i)access_key",
-		"(?i)private_key",
-		"(?i)client_secret",
-		"(?i)authorization",
-		"(?i)bearer",
-		"(?i)session",
-		"(?i)cookie",
-	}
 }
 
 func compilePatterns(patterns []string) ([]*regexp.Regexp, error) {

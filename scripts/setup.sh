@@ -50,4 +50,16 @@ linters:
       loglint:
         type: module
         description: log message checks
+        config: .loglint.yml
+EOF
+
+cat > .loglint.yml <<EOF
+lowercase: true
+english: true
+special: true
+sensitive: true
+patterns:
+  - '(?i)password'
+  - '(?i)api_key'
+  - '(?i)token'
 EOF

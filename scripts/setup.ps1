@@ -51,6 +51,20 @@ linters:
       loglint:
         type: module
         description: log message checks
+        config: .loglint.yml
 
 "@
 [System.IO.File]::WriteAllText("$PWD\.golangci.yml", $golangci.Replace("`r`n", "`n"))
+
+$golangci = @"
+lowercase: true
+english: true
+special: true
+sensitive: true
+patterns:
+  - '(?i)password'
+  - '(?i)api_key'
+  - '(?i)token'
+
+"@
+[System.IO.File]::WriteAllText("$PWD\.loglint.yml", $golangci.Replace("`r`n", "`n"))
