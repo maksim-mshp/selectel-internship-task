@@ -51,7 +51,8 @@ linters:
       loglint:
         type: module
         description: log message checks
-        config: .loglint.yml
+        settings:
+          config: .loglint.yml
 
 "@
 [System.IO.File]::WriteAllText("$PWD\.golangci.yml", $golangci.Replace("`r`n", "`n"))

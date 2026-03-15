@@ -50,7 +50,8 @@ linters:
       loglint:
         type: module
         description: log message checks
-        config: .loglint.yml
+        settings:
+          config: .loglint.yml
 EOF
 
 cat > .loglint.yml <<EOF
