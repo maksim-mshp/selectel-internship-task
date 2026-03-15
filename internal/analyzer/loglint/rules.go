@@ -29,7 +29,7 @@ func reportViolations(pass *analysis.Pass, msgExpr ast.Expr, parts messageParts,
 		if rules.special && !special && containsSpecialOrEmoji(lit.Value) {
 			special = true
 		}
-		if rules.sensitive && !sensitive && containsSensitiveKeyword(lit.Value) {
+		if rules.sensitive && !sensitive && containsSensitiveKeyword(lit.Value, rules.sensitiveKeywords) {
 			sensitive = true
 		}
 	}
@@ -58,7 +58,7 @@ func reportAll(pass *analysis.Pass, pos token.Pos, msg string, rules ruleSet) {
 	if rules.special && containsSpecialOrEmoji(msg) {
 		pass.Reportf(pos, "log message must not contain special symbols or emoji")
 	}
-	if rules.sensitive && containsSensitiveKeyword(msg) {
+	if rules.sensitive && containsSensitiveKeyword(msg, rules.sensitiveKeywords) {
 		pass.Reportf(pos, "log message must not contain sensitive data")
 	}
 }
@@ -94,35 +94,12 @@ func containsSpecialOrEmoji(s string) bool {
 	return false
 }
 
-func containsSensitiveKeyword(s string) bool {
+func containsSensitiveKeyword(s string, keywords []string) bool {
 	low := strings.ToLower(s)
-	for _, kw := range sensitiveKeywords {
+	for _, kw := range keywords {
 		if strings.Contains(low, kw) {
 			return true
 		}
 	}
 	return false
-}
-
-var sensitiveKeywords = []string{
-	"password",
-	"passwd",
-	"pwd",
-	"secret",
-	"token",
-	"access_token",
-	"refresh_token",
-	"id_token",
-	"api_key",
-	"apikey",
-	"access_key",
-	"private_key",
-	"client_secret",
-	"authorization",
-	"bearer",
-	"session",
-	"cookie",
-	"ssn",
-	"cvv",
-	"pin",
 }

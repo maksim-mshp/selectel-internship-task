@@ -8,71 +8,79 @@ import (
 	"golang.org/x/tools/go/ast/inspector"
 )
 
-var Analyzer = &analysis.Analyzer{
-	Name:     "loglint",
-	Doc:      "checks log messages",
-	Requires: []*analysis.Analyzer{inspect.Analyzer},
-	Run:      run,
-}
+var Analyzer = NewAnalyzer(DefaultConfig())
 
-var LowercaseAnalyzer = &analysis.Analyzer{
-	Name:     "loglintlowercase",
-	Doc:      "checks log message lowercase start",
-	Requires: []*analysis.Analyzer{inspect.Analyzer},
-	Run:      runLowercase,
-}
+var LowercaseAnalyzer = NewRuleAnalyzer(
+	"loglintlowercase",
+	"checks log message lowercase start",
+	ruleSet{lowercase: true},
+	DefaultConfig(),
+)
 
-var EnglishAnalyzer = &analysis.Analyzer{
-	Name:     "loglintenglish",
-	Doc:      "checks log message language",
-	Requires: []*analysis.Analyzer{inspect.Analyzer},
-	Run:      runEnglish,
-}
+var EnglishAnalyzer = NewRuleAnalyzer(
+	"loglintenglish",
+	"checks log message language",
+	ruleSet{english: true},
+	DefaultConfig(),
+)
 
-var SpecialAnalyzer = &analysis.Analyzer{
-	Name:     "loglintspecial",
-	Doc:      "checks log message symbols",
-	Requires: []*analysis.Analyzer{inspect.Analyzer},
-	Run:      runSpecial,
-}
+var SpecialAnalyzer = NewRuleAnalyzer(
+	"loglintspecial",
+	"checks log message symbols",
+	ruleSet{special: true},
+	DefaultConfig(),
+)
 
-var SensitiveAnalyzer = &analysis.Analyzer{
-	Name:     "loglintsensitive",
-	Doc:      "checks log message sensitive data",
-	Requires: []*analysis.Analyzer{inspect.Analyzer},
-	Run:      runSensitive,
-}
+var SensitiveAnalyzer = NewRuleAnalyzer(
+	"loglintsensitive",
+	"checks log message sensitive data",
+	ruleSet{sensitive: true},
+	DefaultConfig(),
+)
 
 type ruleSet struct {
-	lowercase bool
-	english   bool
-	special   bool
-	sensitive bool
+	lowercase         bool
+	english           bool
+	special           bool
+	sensitive         bool
+	sensitiveKeywords []string
 }
 
-func run(pass *analysis.Pass) (interface{}, error) {
-	return runWith(pass, ruleSet{
-		lowercase: true,
-		english:   true,
-		special:   true,
-		sensitive: true,
-	})
+func NewAnalyzer(cfg Config) *analysis.Analyzer {
+	return NewRuleAnalyzer("loglint", "checks log messages", rulesFromConfig(cfg), cfg)
 }
 
-func runLowercase(pass *analysis.Pass) (interface{}, error) {
-	return runWith(pass, ruleSet{lowercase: true})
+func NewRuleAnalyzer(name, doc string, mask ruleSet, cfg Config) *analysis.Analyzer {
+	base := rulesFromConfig(cfg)
+	rules := ruleSet{
+		lowercase:         mask.lowercase && base.lowercase,
+		english:           mask.english && base.english,
+		special:           mask.special && base.special,
+		sensitive:         mask.sensitive && base.sensitive,
+		sensitiveKeywords: base.sensitiveKeywords,
+	}
+	return newAnalyzerWithRules(name, doc, rules)
 }
 
-func runEnglish(pass *analysis.Pass) (interface{}, error) {
-	return runWith(pass, ruleSet{english: true})
+func rulesFromConfig(cfg Config) ruleSet {
+	return ruleSet{
+		lowercase:         cfg.Lowercase,
+		english:           cfg.English,
+		special:           cfg.Special,
+		sensitive:         cfg.Sensitive,
+		sensitiveKeywords: cfg.SensitiveKeywords,
+	}
 }
 
-func runSpecial(pass *analysis.Pass) (interface{}, error) {
-	return runWith(pass, ruleSet{special: true})
-}
-
-func runSensitive(pass *analysis.Pass) (interface{}, error) {
-	return runWith(pass, ruleSet{sensitive: true})
+func newAnalyzerWithRules(name, doc string, rules ruleSet) *analysis.Analyzer {
+	return &analysis.Analyzer{
+		Name:     name,
+		Doc:      doc,
+		Requires: []*analysis.Analyzer{inspect.Analyzer},
+		Run: func(pass *analysis.Pass) (interface{}, error) {
+			return runWith(pass, rules)
+		},
+	}
 }
 
 func runWith(pass *analysis.Pass, rules ruleSet) (interface{}, error) {
