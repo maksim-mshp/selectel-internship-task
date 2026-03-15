@@ -26,7 +26,17 @@ func TestSpecial(t *testing.T) {
 }
 
 func TestSensitive(t *testing.T) {
-	diags := runOnPackage(t, SensitiveAnalyzer, "sensitive")
+	dir := t.TempDir()
+	path := filepath.Join(dir, "loglint.yml")
+	data := []byte("patterns:\n  - '(?i)password'\n")
+	if err := os.WriteFile(path, data, 0644); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+	cfg, err := LoadConfig(path)
+	if err != nil {
+		t.Fatalf("load config: %v", err)
+	}
+	diags := runOnPackage(t, NewAnalyzer(cfg), "sensitive")
 	requireSingleMessage(t, diags, "log message must not contain sensitive data")
 }
 

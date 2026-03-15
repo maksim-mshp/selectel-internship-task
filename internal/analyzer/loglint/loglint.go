@@ -64,12 +64,17 @@ func NewRuleAnalyzer(name, doc string, mask ruleSet, cfg Config) *analysis.Analy
 }
 
 func rulesFromConfig(cfg Config) ruleSet {
+	patterns := cfg.compiledPatterns
+	if patterns == nil && cfg.Patterns != nil {
+		compiled, _ := compilePatterns(cfg.Patterns)
+		patterns = compiled
+	}
 	return ruleSet{
 		lowercase:         cfg.Lowercase,
 		english:           cfg.English,
 		special:           cfg.Special,
 		sensitive:         cfg.Sensitive,
-		sensitivePatterns: cfg.compiledPatterns,
+		sensitivePatterns: patterns,
 	}
 }
 

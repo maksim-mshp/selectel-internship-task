@@ -1,9 +1,13 @@
 package loglint
 
 import (
+	"bytes"
+	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 )
@@ -48,14 +52,17 @@ func LoadConfig(path string) (Config, error) {
 	if err != nil {
 		return cfg, err
 	}
-	var overrides ConfigOverrides
-	if err := yaml.Unmarshal(data, &overrides); err != nil {
-		return cfg, err
+	overrides, err := decodeConfigOverrides(data)
+	if err != nil {
+		return cfg, fmt.Errorf("%s: %w", path, err)
 	}
 	cfg = applyOverrides(cfg, overrides)
+	if err := validateConfig(cfg); err != nil {
+		return cfg, fmt.Errorf("%s: %w", path, err)
+	}
 	compiled, err := compilePatterns(cfg.Patterns)
 	if err != nil {
-		return cfg, err
+		return cfg, fmt.Errorf("%s: %w", path, err)
 	}
 	cfg.compiledPatterns = compiled
 	return cfg, nil
@@ -88,6 +95,35 @@ func findDefaultConfigPath() string {
 		}
 	}
 	return ""
+}
+
+func decodeConfigOverrides(data []byte) (ConfigOverrides, error) {
+	var overrides ConfigOverrides
+	dec := yaml.NewDecoder(bytes.NewReader(data))
+	dec.KnownFields(true)
+	if err := dec.Decode(&overrides); err != nil {
+		return overrides, err
+	}
+	var extra any
+	if err := dec.Decode(&extra); err != io.EOF {
+		if err == nil {
+			return overrides, fmt.Errorf("unexpected extra document")
+		}
+		return overrides, err
+	}
+	return overrides, nil
+}
+
+func validateConfig(cfg Config) error {
+	if cfg.Sensitive && len(cfg.Patterns) == 0 {
+		return fmt.Errorf("sensitive enabled but patterns is empty")
+	}
+	for i, p := range cfg.Patterns {
+		if strings.TrimSpace(p) == "" {
+			return fmt.Errorf("patterns[%d] is empty", i)
+		}
+	}
+	return nil
 }
 
 func compilePatterns(patterns []string) ([]*regexp.Regexp, error) {
